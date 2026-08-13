@@ -37,7 +37,11 @@ public class ParcelResource {
     @Path("/{trackingId}")
     @RolesAllowed({"SENDER", "DRIVER", "PICKUP", "ADMIN"})
     public ParcelDto getByTrackingId(@PathParam("trackingId") String trackingId) {
-        return parcelService.getByTrackingId(trackingId);
+        UUID requesterId = currentUserId();
+        boolean isSender = jwt.getGroups() != null && jwt.getGroups().contains("SENDER");
+        return isSender
+                ? parcelService.getByTrackingIdForSender(trackingId, requesterId)
+                : parcelService.getByTrackingId(trackingId);
     }
 
     @GET

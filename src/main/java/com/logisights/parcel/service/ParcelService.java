@@ -4,6 +4,7 @@ import com.logisights.auth.entity.UserEntity;
 import com.logisights.auth.repository.UserRepository;
 import com.logisights.common.ApiException;
 import com.logisights.common.ParcelStatus;
+import com.logisights.common.UserRole;
 import com.logisights.driver.entity.DriverEarningsEntity;
 import com.logisights.driver.repository.DriverEarningsRepository;
 import com.logisights.notification.MailSender;
@@ -92,6 +93,17 @@ public class ParcelService {
                 .orElseThrow(() -> ApiException.notFound("No parcel found for tracking ID " + trackingId));
     }
 
+    public ParcelDto getByTrackingIdForSender(String trackingId, UUID senderId) {
+        ParcelEntity parcel = parcelRepository.findByTrackingId(trackingId)
+                .orElseThrow(() -> ApiException.notFound("No parcel found for tracking ID " + trackingId));
+
+        if (!parcel.senderId.equals(senderId)) {
+            throw ApiException.notFound("No parcel found for tracking ID " + trackingId);
+        }
+
+        return ParcelDto.from(parcel);
+    }
+
     public List<ParcelDto> listForSender(UUID senderId) {
         return parcelRepository.findBySender(senderId).stream().map(ParcelDto::from).collect(Collectors.toList());
     }
@@ -104,6 +116,14 @@ public class ParcelService {
     public ParcelDto updateStatus(UUID parcelId, UUID actorId, UpdateStatusRequest request) {
         ParcelEntity parcel = parcelRepository.findByIdOptional(parcelId)
                 .orElseThrow(() -> ApiException.notFound("Parcel not found"));
+
+        if (actorId != null) {
+            UserEntity actor = userRepository.findById(actorId);
+            if (actor != null && actor.role == UserRole.DRIVER
+                    && !actorId.equals(parcel.driverId)) {
+                throw ApiException.forbidden("You are not assigned to this parcel");
+            }
+        }
 
         parcel.status = request.status();
         recordHistory(parcel.id, request.status(), actorId, request.note());

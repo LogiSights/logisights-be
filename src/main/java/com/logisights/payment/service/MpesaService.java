@@ -69,9 +69,13 @@ public class MpesaService {
     String callbackUrl;
 
     @Transactional
-    public PaymentDto initiateStkPush(StkPushInitiateRequest request) {
+    public PaymentDto initiateStkPush(java.util.UUID senderId, StkPushInitiateRequest request) {
         ParcelEntity parcel = parcelRepository.findByIdOptional(request.parcelId())
                 .orElseThrow(() -> ApiException.notFound("Parcel not found"));
+
+        if (!parcel.senderId.equals(senderId)) {
+            throw ApiException.forbidden("You do not own this parcel");
+        }
 
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         String password = Base64.getEncoder().encodeToString(
@@ -124,7 +128,7 @@ public class MpesaService {
             Log.error("Failed to serialize M-Pesa callback payload", e);
         }
 
-        boolean success = stkCallback.ResultCode() == 0;
+        boolean success = stkCallback.ResultCode() == 0 && callbackAmountMatches(stkCallback, payment);
         payment.status = success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED;
 
         ParcelEntity parcel = parcelRepository.findByIdOptional(payment.parcelId).orElse(null);
@@ -139,6 +143,25 @@ public class MpesaService {
         } else if (sender != null && parcel != null) {
             mailSender.sendPaymentFailed(sender.email, sender.name, parcel.trackingId);
         }
+    }
+
+    private boolean callbackAmountMatches(MpesaCallbackPayload.StkCallback stkCallback, PaymentEntity payment) {
+        if (stkCallback.CallbackMetadata() == null) {
+            return false;
+        }
+        return stkCallback.CallbackMetadata().Item().stream()
+                .filter(item -> "Amount".equals(item.Name()))
+                .findFirst()
+                .map(item -> {
+                    java.math.BigDecimal callbackAmount = new java.math.BigDecimal(item.Value().toString());
+                    boolean matches = callbackAmount.compareTo(payment.amountKes) == 0;
+                    if (!matches) {
+                        Log.warn("M-Pesa callback amount " + callbackAmount + " does not match expected "
+                                + payment.amountKes + " for payment " + payment.id);
+                    }
+                    return matches;
+                })
+                .orElse(false);
     }
 
     private String fetchAccessToken() {
