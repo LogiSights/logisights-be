@@ -1,66 +1,43 @@
-# logisights-be
+# Logisights Backend
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Backend API for Logisights, a parcel delivery platform for the Kenyan market. Serves the [logisights-FE](https://github.com/LogiSights/logisights-FE) Next.js frontend: sender booking and tracking, driver delivery management, pickup-point inventory, M-Pesa payments, and admin analytics across four roles (SENDER, DRIVER, PICKUP, ADMIN).
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Stack
 
-## Running the application in dev mode
+Quarkus 3.38, PostgreSQL, Flyway migrations, JWT auth (`smallrye-jwt`), M-Pesa Daraja integration, and Resend-backed transactional email over Qute templates. See [CLAUDE.md](CLAUDE.md) for the module layout and architectural decisions.
 
-You can run your application in dev mode that enables live coding using:
+## Local development
 
-```shell script
-./mvnw quarkus:dev
+```bash
+docker compose up -d                 # starts Postgres on :5435
+
+cd src/main/resources                # generate a dev-only JWT signing keypair (gitignored)
+openssl genrsa -out privateKey.pem 2048
+openssl rsa -in privateKey.pem -pubout -out publicKey.pem
+cd ../../..
+
+./mvnw quarkus:dev                   # http://localhost:8080, Flyway migrates on start
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Health check: `GET /q/health`. Required env vars are listed in `application.properties` alongside their dev defaults.
 
-## Packaging and running the application
+## Testing
 
-The application can be packaged using:
-
-```shell script
-./mvnw package
+```bash
+./mvnw test      # unit tests
+./mvnw verify     # tests + JaCoCo coverage gate (90% line coverage on business logic)
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+Coverage excludes entities, DTOs, REST resources, and generated REST client interfaces — the gate targets the service layer where the business rules live.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+## CI
 
-If you want to build an _über-jar_, execute the following command:
+GitHub Actions (`.github/workflows/ci.yml`) runs `mvn verify` on every push and pull request against `main`, enforcing the coverage gate and uploading the JaCoCo report as a build artifact.
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
+## Packaging
+
+```bash
+./mvnw package                                      # target/quarkus-app/quarkus-run.jar
+./mvnw package -Dnative                              # native executable (requires GraalVM)
+./mvnw package -Dnative -Dquarkus.native.container-build=true   # native build via container
 ```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/logisights-be-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplified JPA/Hibernate data access layer with active record and repository patterns
-- Qute ([guide](https://quarkus.io/guides/qute)): Offer templating support for web, email, etc in a build time, type-safe way
-- SmallRye Health ([guide](https://quarkus.io/guides/smallrye-health)): Monitor service health
-- SmallRye JWT Build ([guide](https://quarkus.io/guides/security-jwt-build)): Create JSON Web Token with SmallRye JWT Build API
-- Hibernate Validator ([guide](https://quarkus.io/guides/validation)): Bean validation using Hibernate Validator and Jakarta Validation annotations
-- SmallRye JWT ([guide](https://quarkus.io/guides/security-jwt)): Secure your applications with JSON Web Token
-- Flyway ([guide](https://quarkus.io/guides/flyway)): Handle your database schema migrations
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
