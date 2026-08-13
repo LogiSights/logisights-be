@@ -1,0 +1,8 @@
+{#include notification/layout.html}
+<h1 class="email-heading" style="font-size:22px;font-weight:700;color:#111827;margin:0 0 16px;">New delivery assigned</h1>
+<p class="email-text" style="font-size:15px;line-height:1.6;color:#374151;margin:0 0 16px;">
+  Hi {name}, parcel <strong>{trackingId}</strong> has been assigned to you for delivery to:
+</p>
+<p style="font-size:16px;color:#111827;font-weight:600;margin:0 0 24px;">{destinationAddress}</p>
+<p class="email-text" style="font-size:14px;color:#6b7280;">Open the driver dashboard to view pickup details and update the delivery status.</p>
+{/include}

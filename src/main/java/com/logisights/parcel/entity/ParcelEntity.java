@@ -29,6 +29,9 @@ public class ParcelEntity extends PanacheEntityBase {
     @Column(name = "recipient_phone")
     public String recipientPhone;
 
+    @Column(name = "recipient_email")
+    public String recipientEmail;
+
     @Column(name = "destination_address")
     public String destinationAddress;
 

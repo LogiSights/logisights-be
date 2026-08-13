@@ -1,0 +1,13 @@
+{#include notification/layout.html}
+<h1 class="email-heading" style="font-size:22px;font-weight:700;color:#111827;margin:0 0 16px;">Your parcel is ready for pickup</h1>
+<p class="email-text" style="font-size:15px;line-height:1.6;color:#374151;margin:0 0 16px;">
+  Hi {name}, parcel <strong>{trackingId}</strong> has arrived and is waiting for you at:
+</p>
+<table role="presentation" style="width:100%;background-color:#f9fafb;border-radius:8px;margin:0 0 24px;">
+  <tr><td style="padding:16px;">
+    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 4px;">{pickupPointName}</p>
+    <p style="font-size:14px;color:#374151;margin:0;">{pickupPointAddress}</p>
+  </td></tr>
+</table>
+<p class="email-text" style="font-size:14px;color:#6b7280;">Bring a valid ID when you collect your parcel.</p>
+{/include}

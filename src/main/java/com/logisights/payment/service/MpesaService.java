@@ -1,9 +1,12 @@
 package com.logisights.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.logisights.auth.entity.UserEntity;
+import com.logisights.auth.repository.UserRepository;
 import com.logisights.common.ApiException;
 import com.logisights.common.ParcelStatus;
 import com.logisights.common.PaymentStatus;
+import com.logisights.notification.MailSender;
 import com.logisights.parcel.dto.UpdateStatusRequest;
 import com.logisights.parcel.entity.ParcelEntity;
 import com.logisights.parcel.repository.ParcelRepository;
@@ -40,6 +43,12 @@ public class MpesaService {
 
     @Inject
     ParcelService parcelService;
+
+    @Inject
+    UserRepository userRepository;
+
+    @Inject
+    MailSender mailSender;
 
     @Inject
     ObjectMapper objectMapper;
@@ -118,9 +127,17 @@ public class MpesaService {
         boolean success = stkCallback.ResultCode() == 0;
         payment.status = success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED;
 
+        ParcelEntity parcel = parcelRepository.findByIdOptional(payment.parcelId).orElse(null);
+        UserEntity sender = parcel != null ? userRepository.findById(parcel.senderId) : null;
+
         if (success) {
             parcelService.updateStatus(payment.parcelId, null,
                     new UpdateStatusRequest(ParcelStatus.IN_TRANSIT, "Payment confirmed via M-Pesa"));
+            if (sender != null && parcel != null) {
+                mailSender.sendPaymentConfirmation(sender.email, sender.name, parcel.trackingId, payment.amountKes);
+            }
+        } else if (sender != null && parcel != null) {
+            mailSender.sendPaymentFailed(sender.email, sender.name, parcel.trackingId);
         }
     }
 

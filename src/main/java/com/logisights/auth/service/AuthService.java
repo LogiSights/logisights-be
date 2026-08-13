@@ -45,6 +45,9 @@ public class AuthService {
     @ConfigProperty(name = "app.frontend-base-url")
     String frontendBaseUrl;
 
+    @ConfigProperty(name = "app.admin-alert-email")
+    String adminAlertEmail;
+
     @Transactional
     public UserDto register(RegisterRequest request) {
         if (request.role() == UserRole.ADMIN) {
@@ -63,6 +66,7 @@ public class AuthService {
         userRepository.persist(user);
 
         issueVerificationEmail(user);
+        mailSender.sendAdminNewUserAlert(adminAlertEmail, user.name, user.email, user.role.name());
 
         return UserDto.from(user);
     }

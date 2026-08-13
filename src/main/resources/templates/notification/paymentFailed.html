@@ -1,0 +1,7 @@
+{#include notification/layout.html}
+<h1 class="email-heading" style="font-size:22px;font-weight:700;color:#111827;margin:0 0 16px;">Payment did not go through</h1>
+<p class="email-text" style="font-size:15px;line-height:1.6;color:#374151;margin:0 0 16px;">
+  Hi {name}, your M-Pesa payment for parcel <strong>{trackingId}</strong> was not completed. This can happen if the STK prompt was cancelled or timed out.
+</p>
+<p class="email-text" style="font-size:14px;color:#6b7280;">Please retry the payment from your Logisights dashboard to continue with this delivery.</p>
+{/include}

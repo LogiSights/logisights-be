@@ -14,6 +14,7 @@ public record ParcelDto(
         UUID senderId,
         String recipientName,
         String recipientPhone,
+        String recipientEmail,
         String destinationAddress,
         ParcelCity city,
         BigDecimal weightKg,
@@ -26,7 +27,7 @@ public record ParcelDto(
         Instant updatedAt
 ) {
     public static ParcelDto from(ParcelEntity e) {
-        return new ParcelDto(e.id, e.trackingId, e.senderId, e.recipientName, e.recipientPhone,
+        return new ParcelDto(e.id, e.trackingId, e.senderId, e.recipientName, e.recipientPhone, e.recipientEmail,
                 e.destinationAddress, e.city, e.weightKg, e.parcelType, e.pickupPointId,
                 e.status, e.costKes, e.driverId, e.createdAt, e.updatedAt);
     }

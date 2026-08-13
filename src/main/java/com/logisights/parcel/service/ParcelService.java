@@ -1,9 +1,12 @@
 package com.logisights.parcel.service;
 
+import com.logisights.auth.entity.UserEntity;
+import com.logisights.auth.repository.UserRepository;
 import com.logisights.common.ApiException;
 import com.logisights.common.ParcelStatus;
 import com.logisights.driver.entity.DriverEarningsEntity;
 import com.logisights.driver.repository.DriverEarningsRepository;
+import com.logisights.notification.MailSender;
 import com.logisights.parcel.dto.BookParcelRequest;
 import com.logisights.parcel.dto.ParcelDto;
 import com.logisights.parcel.dto.UpdateStatusRequest;
@@ -38,10 +41,19 @@ public class ParcelService {
     DriverEarningsRepository driverEarningsRepository;
 
     @Inject
+    UserRepository userRepository;
+
+    @Inject
     PricingService pricingService;
+
+    @Inject
+    MailSender mailSender;
 
     @ConfigProperty(name = "driver.earnings-per-delivery-kes")
     BigDecimal earningsPerDelivery;
+
+    @ConfigProperty(name = "app.frontend-base-url")
+    String frontendBaseUrl;
 
     @Transactional
     public ParcelDto book(UUID senderId, BookParcelRequest request) {
@@ -50,6 +62,7 @@ public class ParcelService {
         parcel.senderId = senderId;
         parcel.recipientName = request.recipientName();
         parcel.recipientPhone = request.recipientPhone();
+        parcel.recipientEmail = request.recipientEmail();
         parcel.destinationAddress = request.destinationAddress();
         parcel.city = request.city();
         parcel.weightKg = request.weightKg();
@@ -63,6 +76,12 @@ public class ParcelService {
         parcelRepository.persist(parcel);
 
         recordHistory(parcel.id, ParcelStatus.PENDING, senderId, "Parcel booked");
+
+        UserEntity sender = userRepository.findById(senderId);
+        if (sender != null) {
+            mailSender.sendBookingConfirmation(sender.email, sender.name, parcel.trackingId,
+                    parcel.costKes, parcel.destinationAddress, trackUrl(parcel.trackingId));
+        }
 
         return ParcelDto.from(parcel);
     }
@@ -93,7 +112,39 @@ public class ParcelService {
             awardDriverEarnings(parcel);
         }
 
+        notifySenderOfStatusChange(parcel, request.note());
+
         return ParcelDto.from(parcel);
+    }
+
+    @Transactional
+    public ParcelDto assignDriver(UUID parcelId, UUID driverId) {
+        ParcelEntity parcel = parcelRepository.findByIdOptional(parcelId)
+                .orElseThrow(() -> ApiException.notFound("Parcel not found"));
+
+        UserEntity driver = userRepository.findByIdOptional(driverId)
+                .orElseThrow(() -> ApiException.notFound("Driver not found"));
+
+        parcel.driverId = driverId;
+
+        mailSender.sendDriverAssigned(driver.email, driver.name, parcel.trackingId, parcel.destinationAddress);
+
+        return ParcelDto.from(parcel);
+    }
+
+    private void notifySenderOfStatusChange(ParcelEntity parcel, String note) {
+        UserEntity sender = userRepository.findById(parcel.senderId);
+        if (sender == null) {
+            return;
+        }
+
+        if (parcel.status == ParcelStatus.DELIVERED) {
+            mailSender.sendDeliveryReceipt(sender.email, sender.name, parcel.trackingId,
+                    parcel.costKes, trackUrl(parcel.trackingId));
+        } else {
+            mailSender.sendStatusUpdate(sender.email, sender.name, parcel.trackingId,
+                    parcel.status.name(), note, trackUrl(parcel.trackingId));
+        }
     }
 
     private void awardDriverEarnings(ParcelEntity parcel) {
@@ -115,6 +166,10 @@ public class ParcelService {
         history.changedBy = changedBy;
         history.note = note;
         historyRepository.persist(history);
+    }
+
+    private String trackUrl(String trackingId) {
+        return frontendBaseUrl + "/sender/track/" + trackingId;
     }
 
     private String generateTrackingId() {

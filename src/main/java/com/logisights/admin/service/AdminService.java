@@ -7,6 +7,7 @@ import com.logisights.auth.repository.UserRepository;
 import com.logisights.common.ApiException;
 import com.logisights.common.UserRole;
 import com.logisights.common.UserStatus;
+import com.logisights.notification.MailSender;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -25,6 +26,9 @@ public class AdminService {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    MailSender mailSender;
+
     public List<UserDto> listUsers() {
         return userRepository.listAll().stream().map(UserDto::from).collect(Collectors.toList());
     }
@@ -33,7 +37,14 @@ public class AdminService {
     public UserDto updateUserStatus(java.util.UUID userId, UserStatus status) {
         UserEntity user = userRepository.findByIdOptional(userId)
                 .orElseThrow(() -> ApiException.notFound("User not found"));
+
+        boolean newlySuspended = status == UserStatus.SUSPENDED && user.status != UserStatus.SUSPENDED;
         user.status = status;
+
+        if (newlySuspended) {
+            mailSender.sendAccountSuspended(user.email, user.name);
+        }
+
         return UserDto.from(user);
     }
 
