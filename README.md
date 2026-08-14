@@ -2,11 +2,11 @@
 
 Backend API for Logisights, a parcel delivery platform for the Kenyan market. Serves the [logisights-FE](https://github.com/LogiSights/logisights-FE) Next.js frontend: sender booking and tracking, driver delivery management, pickup-point inventory, M-Pesa payments, and admin analytics across four roles (SENDER, DRIVER, PICKUP, ADMIN).
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for how the frontend, this API, the database, and the external providers (Resend, M-Pesa) fit together.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for how the frontend, this API, the database, and the external providers (Resend, M-Pesa) fit together, the module layout, and the key architectural decisions.
 
 ## Stack
 
-Quarkus 3.38, PostgreSQL, Flyway migrations, JWT auth (`smallrye-jwt`), M-Pesa Daraja integration, and Resend-backed transactional email over Qute templates. See [CLAUDE.md](CLAUDE.md) for the module layout and architectural decisions.
+Quarkus 3.38, PostgreSQL, Flyway migrations, JWT auth (`smallrye-jwt`), M-Pesa Daraja integration, and Resend-backed transactional email over Qute templates.
 
 ## Local development
 
@@ -23,9 +23,9 @@ cd ../../..
 ./mvnw quarkus:dev                   # http://localhost:8080, Flyway migrates on start
 ```
 
-`application.properties` is gitignored so real local secrets never get committed. `example.application.properties` is the tracked template with placeholder defaults; copy it before first run.
+`application.properties` is gitignored so real local secrets never get committed. `example.application.properties` is the tracked template with placeholder defaults; copy it before first run. Required env vars (see that file for defaults/fallbacks): `DB_USERNAME`, `DB_PASSWORD`, `DB_URL`, `RESEND_API_KEY`, `MAIL_FROM_ADDRESS`, `FRONTEND_BASE_URL`, `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY`, `MPESA_CALLBACK_URL`, `CORS_ORIGINS`.
 
-Health check: `GET /q/health`.
+Health check: `GET /q/health`. Flyway migration lives at `src/main/resources/db/migration/V1__init_schema.sql`. This is the schema of record; don't hand-edit tables outside a new migration.
 
 ## Testing
 
@@ -34,7 +34,9 @@ Health check: `GET /q/health`.
 ./mvnw verify     # tests + JaCoCo coverage gate (90% line coverage on business logic)
 ```
 
-Tests run against a separate `logisights_test` database, never the dev database. See the Testing section in [CLAUDE.md](CLAUDE.md) for the isolation setup. Coverage excludes entities, DTOs, REST resources, and generated REST client interfaces; the gate targets the service layer where the business rules live.
+Tests run against a **separate `logisights_test` database**, never the `logisights` dev database. `docker/init-test-db.sql` provisions it automatically on a fresh `docker compose up -d` (existing local volumes need `CREATE DATABASE logisights_test OWNER logisights;` run once manually). The test datasource uses Hibernate `drop-and-create` and skips Flyway, so each `@QuarkusTest` run rebuilds its own schema from the entities and can never touch or be blocked by dev data. CI spins up its own throwaway Postgres service with that database name, so this isolation holds in both places. `UserRepositoryTest` asserts `current_database() = 'logisights_test'` as a regression guard on this wiring.
+
+Coverage excludes entities, DTOs, REST resources, and generated REST client interfaces; the gate targets the service layer where the business rules live.
 
 ## CI
 
