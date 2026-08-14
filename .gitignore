@@ -47,3 +47,6 @@ nb-configuration.xml
 # JWT signing keys (dev-only pair regenerated per checkout; prod keys come from a secrets manager)
 src/main/resources/privateKey.pem
 src/main/resources/publicKey.pem
+
+# Holds real config/secrets locally; copy example.application.properties to create it
+src/main/resources/application.properties

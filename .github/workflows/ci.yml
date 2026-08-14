@@ -50,6 +50,9 @@ jobs:
           openssl genrsa -out privateKey.pem 2048
           openssl rsa -in privateKey.pem -pubout -out publicKey.pem
 
+      - name: Materialize application.properties from the tracked example
+        run: cp src/main/resources/example.application.properties src/main/resources/application.properties
+
       - name: Build, test, and enforce coverage gate
         run: mvn -B verify
 
