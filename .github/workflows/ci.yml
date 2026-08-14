@@ -12,6 +12,27 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: logisights_test
+          POSTGRES_USER: logisights
+          POSTGRES_PASSWORD: logisights_secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U logisights -d logisights_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DB_URL: jdbc:postgresql://localhost:5432/logisights_test
+      TEST_DB_USERNAME: logisights
+      TEST_DB_PASSWORD: logisights_secret
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

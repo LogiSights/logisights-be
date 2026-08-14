@@ -28,7 +28,7 @@ Health check: `GET /q/health`. Required env vars are listed in `application.prop
 ./mvnw verify     # tests + JaCoCo coverage gate (90% line coverage on business logic)
 ```
 
-Coverage excludes entities, DTOs, REST resources, and generated REST client interfaces — the gate targets the service layer where the business rules live.
+Tests run against a separate `logisights_test` database, never the dev database — see the Testing section in [CLAUDE.md](CLAUDE.md) for the isolation setup. Coverage excludes entities, DTOs, REST resources, and generated REST client interfaces — the gate targets the service layer where the business rules live.
 
 ## CI
 

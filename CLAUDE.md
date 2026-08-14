@@ -43,3 +43,7 @@ Required env vars (see `application.properties` for defaults/fallbacks):
 `DB_USERNAME`, `DB_PASSWORD`, `DB_URL`, `RESEND_API_KEY`, `MAIL_FROM_ADDRESS`, `FRONTEND_BASE_URL`, `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY`, `MPESA_CALLBACK_URL`, `CORS_ORIGINS`.
 
 `GET /q/health` for liveness. Flyway migration lives at `src/main/resources/db/migration/V1__init_schema.sql` — this is the schema of record; don't hand-edit tables outside a new migration.
+
+## Testing
+
+`mvn test` runs against a **separate `logisights_test` database** (`%test.quarkus.datasource.*` in `application.properties`), never the `logisights` dev database — `docker/init-test-db.sql` provisions it automatically on a fresh `docker compose up -d` (existing local volumes need `CREATE DATABASE logisights_test OWNER logisights;` run once manually). The test datasource uses Hibernate `drop-and-create` and skips Flyway, so each `@QuarkusTest` run rebuilds its own schema from the entities — it can never touch or be blocked by dev data. CI (`.github/workflows/ci.yml`) spins up its own throwaway Postgres service with that database name, so this isolation holds in both places. `UserRepositoryTest` asserts `current_database() = 'logisights_test'` as a regression guard on this wiring.
